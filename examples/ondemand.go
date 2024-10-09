@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/zencoder/go-dash/v3/mpd"
+	"github.com/zencoder/go-dash/mpd"
 )
 
 func exampleOndemand() {
@@ -31,7 +31,7 @@ func exampleOndemand() {
 	_ = videoRep2.SetNewBaseURL("1200k/output-video-1.mp4")
 	_, _ = videoRep2.AddNewSegmentBase("686-813", "0-685")
 
-	subtitleAS, _ := m.AddNewAdaptationSetSubtitle(mpd.DASH_MIME_TYPE_SUBTITLE_VTT, "en", "Subtitle (En)")
+	subtitleAS, _ := m.AddNewAdaptationSetSubtitle(mpd.DASH_MIME_TYPE_SUBTITLE_VTT, "en")
 	subtitleRep, _ := subtitleAS.AddNewRepresentationSubtitle(256, "captions_en")
 	_ = subtitleRep.SetNewBaseURL("http://example.com/content/sintel/subtitles/subtitles_en.vtt")
 

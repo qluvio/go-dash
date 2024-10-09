@@ -6,16 +6,15 @@ import (
 	"strconv"
 	"testing"
 
-	. "github.com/zencoder/go-dash/v3/helpers/ptrs"
-	"github.com/zencoder/go-dash/v3/helpers/require"
-	"github.com/zencoder/go-dash/v3/helpers/testfixtures"
+	. "github.com/zencoder/go-dash/helpers/ptrs"
+	"github.com/zencoder/go-dash/helpers/require"
+	"github.com/zencoder/go-dash/helpers/testfixtures"
 )
 
 const (
 	VALID_MEDIA_PRESENTATION_DURATION string = "PT6M16S"
 	VALID_MIN_BUFFER_TIME             string = "PT1.97S"
 	VALID_AVAILABILITY_START_TIME     string = "1970-01-01T00:00:00Z"
-	VALID_PUBLISH_TIME                string = "2020-03-12T10:39:45Z"
 	VALID_MINIMUM_UPDATE_PERIOD       string = "PT5S"
 	VALID_SCAN_TYPE                   string = "progressive"
 	VALID_SEGMENT_ALIGNMENT           bool   = true
@@ -43,11 +42,9 @@ const (
 	VALID_WV_HEADER                   string = "CAESEFq91S9VSk8quNBh92FCUVUaCGNhc3RsYWJzIhhXcjNWTDFWS1R5cTQwR0gzWVVKUlZRPT0yB2RlZmF1bHQ="
 	VALID_SUBTITLE_BANDWIDTH          int64  = 256
 	VALID_SUBTITLE_ID                 string = "subtitle_en"
-	VALID_SUBTITLE_LABEL              string = "Subtitle (En)"
 	VALID_SUBTITLE_URL                string = "http://example.com/content/sintel/subtitles/subtitles_en.vtt"
 	VALID_ROLE                        string = "main"
 	VALID_LOCATION                    string = "https://example.com/location.mpd"
-	VALID_SCHEME_ID_URI               string = "https://aomedia.org/emsg/ID3"
 )
 
 func TestNewMPDLive(t *testing.T) {
@@ -76,8 +73,7 @@ func TestNewMPDLive(t *testing.T) {
 func TestNewDynamicMPDLive(t *testing.T) {
 	m := NewDynamicMPD(DASH_PROFILE_LIVE, VALID_AVAILABILITY_START_TIME, VALID_MIN_BUFFER_TIME,
 		AttrMediaPresentationDuration(VALID_MEDIA_PRESENTATION_DURATION),
-		AttrMinimumUpdatePeriod(VALID_MINIMUM_UPDATE_PERIOD),
-		AttrPublishTime(VALID_PUBLISH_TIME))
+		AttrMinimumUpdatePeriod(VALID_MINIMUM_UPDATE_PERIOD))
 	require.NotNil(t, m)
 	expectedMPD := &MPD{
 		XMLNs:                     Strptr("urn:mpeg:dash:schema:mpd:2011"),
@@ -90,7 +86,6 @@ func TestNewDynamicMPDLive(t *testing.T) {
 		period:                    &Period{},
 		Periods:                   []*Period{{}},
 		UTCTiming:                 &DescriptorType{},
-		PublishTime:               Strptr(VALID_PUBLISH_TIME),
 	}
 
 	expectedString, err := expectedMPD.WriteToString()
@@ -155,7 +150,7 @@ func TestWidevineContentProtection_ImplementsInterface(t *testing.T) {
 
 func TestNewMPDLiveWithBaseURLInMPD(t *testing.T) {
 	m := NewMPD(DASH_PROFILE_LIVE, VALID_MEDIA_PRESENTATION_DURATION, VALID_MIN_BUFFER_TIME)
-	m.BaseURL = []string{VALID_BASE_URL_VIDEO}
+	m.BaseURL = VALID_BASE_URL_VIDEO
 	require.NotNil(t, m)
 	expectedMPD := &MPD{
 		XMLNs:                     Strptr("urn:mpeg:dash:schema:mpd:2011"),
@@ -165,7 +160,7 @@ func TestNewMPDLiveWithBaseURLInMPD(t *testing.T) {
 		MinBufferTime:             Strptr(VALID_MIN_BUFFER_TIME),
 		period:                    &Period{},
 		Periods:                   []*Period{{}},
-		BaseURL:                   []string{VALID_BASE_URL_VIDEO},
+		BaseURL:                   VALID_BASE_URL_VIDEO,
 	}
 
 	expectedString, err := expectedMPD.WriteToString()
@@ -178,10 +173,10 @@ func TestNewMPDLiveWithBaseURLInMPD(t *testing.T) {
 
 func TestNewMPDLiveWithBaseURLInPeriod(t *testing.T) {
 	m := NewMPD(DASH_PROFILE_LIVE, VALID_MEDIA_PRESENTATION_DURATION, VALID_MIN_BUFFER_TIME)
-	m.period.BaseURL = []string{VALID_BASE_URL_VIDEO}
+	m.period.BaseURL = VALID_BASE_URL_VIDEO
 	require.NotNil(t, m)
 	period := &Period{
-		BaseURL: []string{VALID_BASE_URL_VIDEO},
+		BaseURL: VALID_BASE_URL_VIDEO,
 	}
 	expectedMPD := &MPD{
 		XMLNs:                     Strptr("urn:mpeg:dash:schema:mpd:2011"),
@@ -357,7 +352,7 @@ func TestAddRepresentationVideo(t *testing.T) {
 func TestAddRepresentationSubtitle(t *testing.T) {
 	m := NewMPD(DASH_PROFILE_LIVE, VALID_MEDIA_PRESENTATION_DURATION, VALID_MIN_BUFFER_TIME)
 
-	subtitleAS, _ := m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG, VALID_SUBTITLE_LABEL)
+	subtitleAS, _ := m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG)
 
 	r, err := subtitleAS.AddNewRepresentationSubtitle(VALID_SUBTITLE_BANDWIDTH, VALID_SUBTITLE_ID)
 
@@ -403,27 +398,9 @@ func TestSetNewBaseURLVideo(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestAddNewBaseURLVideo(t *testing.T) {
-	m := NewMPD(DASH_PROFILE_ONDEMAND, VALID_MEDIA_PRESENTATION_DURATION, VALID_MIN_BUFFER_TIME)
-	videoAS, _ := m.AddNewAdaptationSetVideoWithID("7357", DASH_MIME_TYPE_VIDEO_MP4, VALID_SCAN_TYPE, VALID_SEGMENT_ALIGNMENT, VALID_START_WITH_SAP)
-
-	r, _ := videoAS.AddNewRepresentationVideo(VALID_VIDEO_BITRATE, VALID_VIDEO_CODEC, VALID_VIDEO_ID, VALID_VIDEO_FRAMERATE, VALID_VIDEO_WIDTH, VALID_VIDEO_HEIGHT)
-
-	err := r.AddNewBaseURL("./")
-	require.NoError(t, err)
-
-	err = r.AddNewBaseURL("../a/")
-	require.NoError(t, err)
-
-	err = r.AddNewBaseURL("../b/")
-	require.NoError(t, err)
-
-	require.EqualStringSlice(t, []string{"./", "../a/", "../b/"}, r.BaseURL)
-}
-
 func TestSetNewBaseURLSubtitle(t *testing.T) {
 	m := NewMPD(DASH_PROFILE_ONDEMAND, VALID_MEDIA_PRESENTATION_DURATION, VALID_MIN_BUFFER_TIME)
-	subtitleAS, _ := m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG, VALID_SUBTITLE_LABEL)
+	subtitleAS, _ := m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG)
 
 	r, _ := subtitleAS.AddNewRepresentationSubtitle(VALID_SUBTITLE_BANDWIDTH, VALID_SUBTITLE_ID)
 
@@ -577,35 +554,4 @@ func TestReadWriteIdentical(t *testing.T) {
 			testfixtures.CompareFixture(t, fixtures+file, got)
 		})
 	}
-}
-
-func TestSetInbandEventStream(t *testing.T) {
-	var (
-		err error
-		got string
-	)
-
-	m := NewMPD(DASH_PROFILE_LIVE, VALID_MEDIA_PRESENTATION_DURATION, VALID_MIN_BUFFER_TIME)
-	videoAS, _ := m.AddNewAdaptationSetVideoWithID("7357", DASH_MIME_TYPE_VIDEO_MP4, VALID_SCAN_TYPE, VALID_SEGMENT_ALIGNMENT, VALID_START_WITH_SAP)
-	err = videoAS.AddNewInbandEventStream(VALID_SCHEME_ID_URI, "0")
-
-	require.NoError(t, err)
-
-	r, _ := videoAS.AddNewRepresentationVideo(VALID_VIDEO_BITRATE, VALID_VIDEO_CODEC, VALID_VIDEO_ID, VALID_VIDEO_FRAMERATE, VALID_VIDEO_WIDTH, VALID_VIDEO_HEIGHT)
-	err = r.AddNewInbandEventStream(VALID_SCHEME_ID_URI, "1")
-
-	require.NoError(t, err)
-
-	got, err = m.WriteToString()
-	require.NoError(t, err)
-
-	testfixtures.CompareFixture(t, "fixtures/inband_event_stream.mpd", got)
-}
-
-func TestSetInbandEventStreamError(t *testing.T) {
-	m := NewMPD(DASH_PROFILE_LIVE, VALID_MEDIA_PRESENTATION_DURATION, VALID_MIN_BUFFER_TIME)
-	videoAS, _ := m.AddNewAdaptationSetVideoWithID("7357", DASH_MIME_TYPE_VIDEO_MP4, VALID_SCAN_TYPE, VALID_SEGMENT_ALIGNMENT, VALID_START_WITH_SAP)
-	err := videoAS.AddNewInbandEventStream("", "")
-
-	require.EqualErr(t, ErrInbandEventStreamSchemeUriEmpty, err)
 }

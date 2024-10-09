@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zencoder/go-dash/v3/helpers/ptrs"
-	"github.com/zencoder/go-dash/v3/helpers/require"
-	"github.com/zencoder/go-dash/v3/helpers/testfixtures"
+	"github.com/zencoder/go-dash/helpers/ptrs"
+	"github.com/zencoder/go-dash/helpers/require"
+	"github.com/zencoder/go-dash/helpers/testfixtures"
 )
 
 func TestReadingManifests(t *testing.T) {
@@ -166,16 +166,14 @@ func TestAddNewAdaptationSetVideoWriteToString(t *testing.T) {
 func TestAddNewAdaptationSetSubtitleWriteToString(t *testing.T) {
 	m := NewMPD(DASH_PROFILE_LIVE, VALID_MEDIA_PRESENTATION_DURATION, VALID_MIN_BUFFER_TIME)
 
-	_, _ = m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG, VALID_SUBTITLE_LABEL)
+	_, _ = m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG)
 
 	xmlStr, err := m.WriteToString()
 	require.NoError(t, err)
 	expectedXML := `<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:isoff-live:2011" type="static" mediaPresentationDuration="PT6M16S" minBufferTime="PT1.97S">
   <Period>
-    <AdaptationSet mimeType="text/vtt" id="7357" lang="en">
-      <Label>Subtitle (En)</Label>
-    </AdaptationSet>
+    <AdaptationSet mimeType="text/vtt" id="7357" lang="en"></AdaptationSet>
   </Period>
 </MPD>
 `
@@ -268,7 +266,7 @@ func LiveProfile() *MPD {
 	_, _ = videoAS.AddNewRepresentationVideo(2295158, "avc1.4d401f", "1200", "30000/1001", 1024, 576)
 	_, _ = videoAS.AddNewRepresentationVideo(2780732, "avc1.4d401f", "1500", "30000/1001", 1280, 720)
 
-	subtitleAS, _ := m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG, VALID_SUBTITLE_LABEL)
+	subtitleAS, _ := m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG)
 	subtitleRep, _ := subtitleAS.AddNewRepresentationSubtitle(VALID_SUBTITLE_BANDWIDTH, VALID_SUBTITLE_ID)
 	_ = subtitleRep.SetNewBaseURL(VALID_SUBTITLE_URL)
 
@@ -281,17 +279,6 @@ func TestFullLiveProfileWriteToString(t *testing.T) {
 	xmlStr, err := m.WriteToString()
 	require.NoError(t, err)
 	testfixtures.CompareFixture(t, "fixtures/live_profile.mpd", xmlStr)
-}
-
-func TestFullLiveProfileMultiBaseURLWriteToString(t *testing.T) {
-	m := LiveProfile()
-	require.NotNil(t, m)
-
-	m.BaseURL = []string{"./", "../a/", "../b/"}
-
-	xmlStr, err := m.WriteToString()
-	require.NoError(t, err)
-	testfixtures.CompareFixture(t, "fixtures/live_profile_multi_base_url.mpd", xmlStr)
 }
 
 func TestFullLiveProfileWriteToFile(t *testing.T) {
@@ -336,7 +323,7 @@ func LiveProfileDynamic() *MPD {
 	_, _ = videoAS.AddNewRepresentationVideo(2295158, "avc1.4d401f", "1200", "30000/1001", 1024, 576)
 	_, _ = videoAS.AddNewRepresentationVideo(2780732, "avc1.4d401f", "1500", "30000/1001", 1280, 720)
 
-	subtitleAS, _ := m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG, VALID_SUBTITLE_LABEL)
+	subtitleAS, _ := m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG)
 	subtitleRep, _ := subtitleAS.AddNewRepresentationSubtitle(VALID_SUBTITLE_BANDWIDTH, VALID_SUBTITLE_ID)
 	_ = subtitleRep.SetNewBaseURL(VALID_SUBTITLE_URL)
 
@@ -392,7 +379,7 @@ func HbbTVProfile() *MPD {
 	_, _ = videoAS.AddNewRepresentationVideo(2295158, "avc1.4d401f", "1200", "30000/1001", 1024, 576)
 	_, _ = videoAS.AddNewRepresentationVideo(2780732, "avc1.4d401f", "1500", "30000/1001", 1280, 720)
 
-	subtitleAS, _ := m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG, VALID_SUBTITLE_LABEL)
+	subtitleAS, _ := m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG)
 	subtitleRep, _ := subtitleAS.AddNewRepresentationSubtitle(VALID_SUBTITLE_BANDWIDTH, VALID_SUBTITLE_ID)
 	_ = subtitleRep.SetNewBaseURL(VALID_SUBTITLE_URL)
 
@@ -445,7 +432,7 @@ func OnDemandProfile() *MPD {
 	_ = videoRep2.SetNewBaseURL("1200k/output-video-1.mp4")
 	_, _ = videoRep2.AddNewSegmentBase("686-813", "0-685")
 
-	subtitleAS, _ := m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG, VALID_SUBTITLE_LABEL)
+	subtitleAS, _ := m.AddNewAdaptationSetSubtitleWithID("7357", DASH_MIME_TYPE_SUBTITLE_VTT, VALID_LANG)
 	subtitleRep, _ := subtitleAS.AddNewRepresentationSubtitle(VALID_SUBTITLE_BANDWIDTH, VALID_SUBTITLE_ID)
 	_ = subtitleRep.SetNewBaseURL(VALID_SUBTITLE_URL)
 
