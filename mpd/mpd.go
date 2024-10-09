@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/zencoder/go-dash/helpers/ptrs"
+	. "github.com/zencoder/go-dash/v3/helpers/ptrs"
 )
 
 // Type definition for DASH profiles
@@ -53,23 +53,25 @@ const (
 
 // Known error variables
 var (
-	ErrNoDASHProfileSet               error = errors.New("No DASH profile set")
-	ErrAdaptationSetNil                     = errors.New("Adaptation Set nil")
-	ErrSegmentTemplateLiveProfileOnly       = errors.New("Segment template can only be used with Live Profile")
-	ErrSegmentTemplateNil                   = errors.New("Segment Template nil ")
-	ErrRepresentationNil                    = errors.New("Representation nil")
-	ErrAccessibilityNil                     = errors.New("Accessibility nil")
-	ErrBaseURLEmpty                         = errors.New("Base URL empty")
-	ErrSegmentBaseOnDemandProfileOnly       = errors.New("Segment Base can only be used with On-Demand Profile")
-	ErrSegmentBaseNil                       = errors.New("Segment Base nil")
-	ErrAudioChannelConfigurationNil         = errors.New("Audio Channel Configuration nil")
-	ErrInvalidDefaultKID                    = errors.New("Invalid Default KID string, should be 32 characters")
-	ErrPROEmpty                             = errors.New("PlayReady PRO empty")
-	ErrContentProtectionNil                 = errors.New("Content Protection nil")
+	ErrNoDASHProfileSet                error = errors.New("No DASH profile set")
+	ErrAdaptationSetNil                      = errors.New("Adaptation Set nil")
+	ErrSegmentTemplateLiveProfileOnly        = errors.New("Segment template can only be used with Live Profile")
+	ErrSegmentTemplateNil                    = errors.New("Segment Template nil ")
+	ErrRepresentationNil                     = errors.New("Representation nil")
+	ErrAccessibilityNil                      = errors.New("Accessibility nil")
+	ErrBaseURLEmpty                          = errors.New("Base URL empty")
+	ErrSegmentBaseOnDemandProfileOnly        = errors.New("Segment Base can only be used with On-Demand Profile")
+	ErrSegmentBaseNil                        = errors.New("Segment Base nil")
+	ErrAudioChannelConfigurationNil          = errors.New("Audio Channel Configuration nil")
+	ErrInvalidDefaultKID                     = errors.New("Invalid Default KID string, should be 32 characters")
+	ErrPROEmpty                              = errors.New("PlayReady PRO empty")
+	ErrContentProtectionNil                  = errors.New("Content Protection nil")
+	ErrInbandEventStreamSchemeUriEmpty       = errors.New("Inband Event Stream schemeIdUri Empty")
 )
 
 type MPD struct {
 	XMLNs                      *string   `xml:"xmlns,attr"`
+	XMLNsDolby                 *string   `xml:"xmlns:dolby,attr"`
 	Profiles                   *string   `xml:"profiles,attr"`
 	Type                       *string   `xml:"type,attr"`
 	MediaPresentationDuration  *string   `xml:"mediaPresentationDuration,attr"`
@@ -79,7 +81,7 @@ type MPD struct {
 	PublishTime                *string   `xml:"publishTime,attr"`
 	TimeShiftBufferDepth       *string   `xml:"timeShiftBufferDepth,attr"`
 	SuggestedPresentationDelay *Duration `xml:"suggestedPresentationDelay,attr,omitempty"`
-	BaseURL                    string    `xml:"BaseURL,omitempty"`
+	BaseURL                    []string  `xml:"BaseURL,omitempty"`
 	Location                   string    `xml:"Location,omitempty"`
 	period                     *Period
 	Periods                    []*Period       `xml:"Period,omitempty"`
@@ -90,7 +92,7 @@ type Period struct {
 	ID              string           `xml:"id,attr,omitempty"`
 	Duration        Duration         `xml:"duration,attr,omitempty"`
 	Start           *Duration        `xml:"start,attr,omitempty"`
-	BaseURL         string           `xml:"BaseURL,omitempty"`
+	BaseURL         []string         `xml:"BaseURL,omitempty"`
 	SegmentBase     *SegmentBase     `xml:"SegmentBase,omitempty"`
 	SegmentList     *SegmentList     `xml:"SegmentList,omitempty"`
 	SegmentTemplate *SegmentTemplate `xml:"SegmentTemplate,omitempty"`
@@ -124,7 +126,7 @@ type CommonAttributesAndElements struct {
 	ContentProtection         []ContentProtectioner `xml:"ContentProtection,omitempty"`
 	EssentialProperty         []DescriptorType      `xml:"EssentialProperty,omitempty"`
 	SupplementalProperty      []DescriptorType      `xml:"SupplementalProperty,omitempty"`
-	InbandEventStream         *DescriptorType       `xml:"inbandEventStream,attr"`
+	InbandEventStream         []DescriptorType      `xml:"InbandEventStream,omitempty"`
 }
 
 type contentProtections []ContentProtectioner
@@ -188,6 +190,8 @@ type AdaptationSet struct {
 	SegmentTemplate    *SegmentTemplate  `xml:"SegmentTemplate,omitempty"` // Live Profile Only
 	Representations    []*Representation `xml:"Representation,omitempty"`
 	AccessibilityElems []*Accessibility  `xml:"Accessibility,omitempty"`
+	Labels             []string          `xml:"Label,omitempty"`
+	BaseURL            []string          `xml:"BaseURL,omitempty"`
 }
 
 func (as *AdaptationSet) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
@@ -372,7 +376,7 @@ type Representation struct {
 	Height                    *int64                     `xml:"height,attr"`              // Video
 	ID                        *string                    `xml:"id,attr"`                  // Audio + Video
 	Width                     *int64                     `xml:"width,attr"`               // Video
-	BaseURL                   *string                    `xml:"BaseURL,omitempty"`        // On-Demand Profile
+	BaseURL                   []string                   `xml:"BaseURL,omitempty"`        // On-Demand Profile
 	SegmentBase               *SegmentBase               `xml:"SegmentBase,omitempty"`    // On-Demand Profile
 	SegmentList               *SegmentList               `xml:"SegmentList,omitempty"`
 	SegmentTemplate           *SegmentTemplate           `xml:"SegmentTemplate,omitempty"`
@@ -388,6 +392,10 @@ type AudioChannelConfiguration struct {
 	SchemeIDURI *string `xml:"schemeIdUri,attr"`
 	// Value will be an int for non-Dolby Schemes, and a hexstring for Dolby Schemes, hence we make it a string
 	Value *string `xml:"value,attr"`
+}
+
+func (m *MPD) SetDolbyXMLNs() {
+	m.XMLNsDolby = Strptr("http://www.dolby.com/ns/online/DASH")
 }
 
 // Creates a new static MPD object.
@@ -441,6 +449,8 @@ func NewDynamicMPD(profile DashProfile, availabilityStartTime, minBufferTime str
 			mpd.MinimumUpdatePeriod = attr.GetStrptr()
 		case *attrMediaPresentationDuration:
 			mpd.MediaPresentationDuration = attr.GetStrptr()
+		case *attrPublishTime:
+			mpd.PublishTime = attr.GetStrptr()
 		}
 	}
 
@@ -631,23 +641,27 @@ func (period *Period) AddNewAdaptationSetVideoWithID(id string, mimeType string,
 // Create a new Adaptation Set for Subtitle Assets.
 // mimeType - MIME Type (i.e. text/vtt).
 // lang - Language (i.e. en).
-func (m *MPD) AddNewAdaptationSetSubtitle(mimeType string, lang string) (*AdaptationSet, error) {
-	return m.period.AddNewAdaptationSetSubtitle(mimeType, lang)
+// label - Label for the subtitle from Studio (i.e. American)
+func (m *MPD) AddNewAdaptationSetSubtitle(mimeType string, lang string, label string) (*AdaptationSet, error) {
+	return m.period.AddNewAdaptationSetSubtitle(mimeType, lang, label)
 }
 
 // Create a new Adaptation Set for Subtitle Assets.
 // mimeType - MIME Type (i.e. text/vtt).
 // lang - Language (i.e. en).
-func (m *MPD) AddNewAdaptationSetSubtitleWithID(id string, mimeType string, lang string) (*AdaptationSet, error) {
-	return m.period.AddNewAdaptationSetSubtitleWithID(id, mimeType, lang)
+// label - Label for the subtitle from Studio (i.e. American)
+func (m *MPD) AddNewAdaptationSetSubtitleWithID(id string, mimeType string, lang string, label string) (*AdaptationSet, error) {
+	return m.period.AddNewAdaptationSetSubtitleWithID(id, mimeType, lang, label)
 }
 
 // Create a new Adaptation Set for Subtitle Assets.
 // mimeType - MIME Type (i.e. text/vtt).
 // lang - Language (i.e. en).
-func (period *Period) AddNewAdaptationSetSubtitle(mimeType string, lang string) (*AdaptationSet, error) {
+// label - Label for the subtitle from Studio (i.e. American)
+func (period *Period) AddNewAdaptationSetSubtitle(mimeType string, lang string, label string) (*AdaptationSet, error) {
 	as := &AdaptationSet{
-		Lang: Strptr(lang),
+		Lang:   Strptr(lang),
+		Labels: []string{label},
 		CommonAttributesAndElements: CommonAttributesAndElements{
 			MimeType: Strptr(mimeType),
 		},
@@ -662,10 +676,12 @@ func (period *Period) AddNewAdaptationSetSubtitle(mimeType string, lang string) 
 // Create a new Adaptation Set for Subtitle Assets.
 // mimeType - MIME Type (i.e. text/vtt).
 // lang - Language (i.e. en).
-func (period *Period) AddNewAdaptationSetSubtitleWithID(id string, mimeType string, lang string) (*AdaptationSet, error) {
+// label - Label for the subtitle from Studio (i.e. American)
+func (period *Period) AddNewAdaptationSetSubtitleWithID(id string, mimeType string, lang string, label string) (*AdaptationSet, error) {
 	as := &AdaptationSet{
-		ID:   Strptr(id),
-		Lang: Strptr(lang),
+		ID:     Strptr(id),
+		Lang:   Strptr(lang),
+		Labels: []string{label},
 		CommonAttributesAndElements: CommonAttributesAndElements{
 			MimeType: Strptr(mimeType),
 		},
@@ -779,7 +795,7 @@ func NewWidevineContentProtection(wvHeader []byte) (*WidevineContentProtection, 
 		if err != nil {
 			panic(err.Error())
 		}
-		psshBox, err := makePSSHBox(wvSystemID, wvHeader)
+		psshBox, err := MakePSSHBox(wvSystemID, wvHeader)
 		if err != nil {
 			return nil, err
 		}
@@ -853,7 +869,7 @@ func (as *AdaptationSet) AddNewContentProtectionSchemePlayreadyWithPSSH(pro stri
 		return nil, err
 	}
 
-	psshBox, err := makePSSHBox(prSystemID, proBin)
+	psshBox, err := MakePSSHBox(prSystemID, proBin)
 	if err != nil {
 		return nil, err
 	}
@@ -885,7 +901,7 @@ func (as *AdaptationSet) AddNewContentProtectionSchemePlayreadyV10WithPSSH(pro s
 		return nil, err
 	}
 
-	psshBox, err := makePSSHBox(prSystemID, proBin)
+	psshBox, err := MakePSSHBox(prSystemID, proBin)
 	if err != nil {
 		return nil, err
 	}
@@ -1099,13 +1115,39 @@ func (as *AdaptationSet) AddNewAccessibilityElement(scheme AccessibilityElementS
 	return accessibility, nil
 }
 
+// AddNewInbandEventStream - Adds a new InbandEventStream Descriptor to an adaptation set
+// uri - Scheme ID URI for the inband event stream
+// val - value for inband event stream
+func (as *AdaptationSet) AddNewInbandEventStream(uri string, val string) error {
+	if len(uri) <= 0 {
+		return ErrInbandEventStreamSchemeUriEmpty
+	}
+	evt := DescriptorType{
+		SchemeIDURI: Strptr(uri),
+		Value:       Strptr(val),
+	}
+	as.InbandEventStream = append(as.InbandEventStream, evt)
+	return nil
+}
+
 // Sets the BaseURL for a Representation.
 // baseURL - Base URL as a string (i.e. 800k/output-audio-und.mp4)
 func (r *Representation) SetNewBaseURL(baseURL string) error {
 	if baseURL == "" {
 		return ErrBaseURLEmpty
 	}
-	r.BaseURL = Strptr(baseURL)
+	// overwrite for backwards compatability
+	r.BaseURL = []string{baseURL}
+	return nil
+}
+
+// Sets the BaseURL for a Representation.
+// baseURL - Base URL as a string (i.e. 800k/output-audio-und.mp4)
+func (r *Representation) AddNewBaseURL(baseURL string) error {
+	if baseURL == "" {
+		return ErrBaseURLEmpty
+	}
+	r.BaseURL = append(r.BaseURL, baseURL)
 	return nil
 }
 
@@ -1162,5 +1204,20 @@ func (r *Representation) setAudioChannelConfiguration(acc *AudioChannelConfigura
 		return ErrAudioChannelConfigurationNil
 	}
 	r.AudioChannelConfiguration = acc
+	return nil
+}
+
+// AddNewInbandEventStream - Adds a new InbandEventStream Descriptor to a Representation
+// uri - Scheme ID URI for the inband event stream
+// val - value for inband event stream
+func (r *Representation) AddNewInbandEventStream(uri string, val string) error {
+	if len(uri) <= 0 {
+		return ErrInbandEventStreamSchemeUriEmpty
+	}
+	evt := DescriptorType{
+		SchemeIDURI: Strptr(uri),
+		Value:       Strptr(val),
+	}
+	r.InbandEventStream = append(r.InbandEventStream, evt)
 	return nil
 }
